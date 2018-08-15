@@ -1,2 +1,39 @@
 # hdf5_dataloader
 DataLoader subclass for PyTorch to work with HDF5 files (BETA)
+
+# Requirements
+
+- fjcommon (`pip install fjcommon`)
+- TODO
+
+# Usage
+
+## Create .hdf5 files
+
+    
+```bash    
+    cd src
+    
+    # Note the escaped *, as it is parsed in Python
+    python maker.py some/path/\*.png --shuffle --num_per_shard 500
+    
+    # See python maker.py --help
+```
+
+## Using DataLoader
+
+```python
+    from hdf5.dataloader import HDF5DataLoader
+    from hdf5.transforms import ArrayToTensor, ArrayCenterCrop
+    
+    # create transform
+    # Note: cannot use default PyTorch ops, because they expect PIL Images
+    transform_hdf5 = transforms.Compose([ArrayCenterCrop(256), ArrayToTensor()])
+    
+    # create dataset
+    dl = HDF5DataLoader(p, transform_hdf5, batch_size=30, num_workers=4)
+    
+    # use
+    for batch in dl:
+        ...
+````
