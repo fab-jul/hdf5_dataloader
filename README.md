@@ -23,8 +23,9 @@ DataLoader subclass for PyTorch to work with HDF5 files (BETA)
 ## Using DataLoader
 
 ```python
-    from hdf5.dataloader import HDF5DataLoader
-    from hdf5.transforms import ArrayToTensor, ArrayCenterCrop
+    from hdf5_dataloader.dataloader import HDF5DataLoader
+    from hdf5_dataloader.transforms import ArrayToTensor, ArrayCenterCrop
+    import torchvision.transforms as transforms
     
     # create transform
     # Note: cannot use default PyTorch ops, because they expect PIL Images
