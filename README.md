@@ -3,6 +3,7 @@ DataLoader subclass for PyTorch to work with HDF5 files (BETA)
 
 # Requirements
 
+- h5py
 - fjcommon (`pip install fjcommon`)
 - TODO
 
