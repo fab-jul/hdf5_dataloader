@@ -1,4 +1,6 @@
+import argparse
 import glob
+import pickle
 import time
 import shutil
 import numpy as np
@@ -41,7 +43,7 @@ def make_hdf5_files(out_dir, images_glob, shuffle=True, num_per_shard=1000, max_
         shutil.rmtree(out_dir)
     os.makedirs(out_dir)
 
-    with open('log', 'w') as f:
+    with open(os.path.join(out_dir, 'log'), 'w') as f:
         info_str = '\n'.join('{}={}'.format(k, v) for k, v in [
             ('out_dir', out_dir),
             ('images_glob', images_glob),
@@ -62,13 +64,16 @@ def make_hdf5_files(out_dir, images_glob, shuffle=True, num_per_shard=1000, max_
     if shuffle:
         print('Shuffling...')
         random.shuffle(image_ps)
+    num_shards_total = str(len(image_ps)//num_per_shard)
 
     if min_size:
         print('Filtering for >= {}...'.format(min_size))
         image_ps = (p for p in image_ps if _big_enough(p, min_size))
+        num_shards_total = '<=' + num_shards_total
 
     writer = None
     count = 0
+    shard_ps = []
     with printing.ProgressPrinter() as progress_printer:
         for count, image_p in enumerate(image_ps):
             if count % num_per_shard == 0:
@@ -81,8 +86,9 @@ def make_hdf5_files(out_dir, images_glob, shuffle=True, num_per_shard=1000, max_
                     return
                 shard_p = os.path.join(out_dir, name_fmt.format(shard_number))
                 assert not os.path.exists(shard_p), 'Record already exists! {}'.format(shard_p)
-                print('Creating {}...'.format(shard_p))
+                print('Creating {} [{}/{}]...'.format(shard_p, shard_number, num_shards_total))
                 writer = h5py.File(shard_p, 'w')
+                shard_ps.append(shard_p)
             image = Image.open(image_p).convert('RGB')
             image = np.array(image, np.uint8).transpose((2, 0, 1))
             assert image.shape[0] == 3
@@ -91,15 +97,26 @@ def make_hdf5_files(out_dir, images_glob, shuffle=True, num_per_shard=1000, max_
             progress_printer.update((count % num_per_shard) / num_per_shard)
     if writer:
         writer.close()
+        assert len(shard_ps)
+        # writing this to num_per_shard.pkl
+        p_to_num_per_shard = {os.path.basename(shard_p): num_per_shard for shard_p in shard_ps}
+        last_shard_p = shard_ps[-1]
+        with h5py.File(last_shard_p, 'r') as f:
+            p_to_num_per_shard[os.path.basename(last_shard_p)] = len(f.keys())
+        with open(os.path.join(out_dir, 'num_per_shard.pkl'), 'wb') as f:
+            pickle.dump(p_to_num_per_shard, f)
     else:
         print('Nothing written, processed {} files...'.format(count))
 
 
+
 def main():
-    import argparse
     p = argparse.ArgumentParser()
     p.add_argument('out_dir',
-                   help='Where to store .hdf5 files')
+                   help='Where to store .hdf5 files. Additionally, the following files are stored: log, which saves '
+                        'the parameters used to create the .hdf5 files, and num_per_shard.pkl, which stores a '
+                        'dictionary mapping file names to number of entries in that file (see '
+                        'maker._get_num_in_shard).')
     p.add_argument('images_glob',
                    help='Glob to images to use. Make sure to escape, e.g., path/to/imgs/\*.png')
     p.add_argument('--shuffle', action='store_true',
@@ -113,7 +130,8 @@ def main():
     p.add_argument('--name_fmt', default='shard_{:010d}.hdf5',
                    help='Format string for shards, must contain one placeholder for number. Default: shard_{:010d}.hdf5')
     p.add_argument('--force', action='store_true',
-                   help='If given, continue creation even if `out_dir` exists already.')
+                   help='If given, continue creation even if `out_dir` exists already. NOTE: In this case, '
+                        '`out_dir` is removed first!')
     flags = p.parse_args()
     make_hdf5_files(**flags.__dict__)
 
