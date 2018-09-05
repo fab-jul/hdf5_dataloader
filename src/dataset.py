@@ -1,11 +1,8 @@
 import os
-import numpy as np
 import random
 import pickle
 import h5py
-from torch.utils.data import Dataset, DataLoader
-from fjcommon import timer
-import glob
+from torch.utils.data import Dataset
 
 
 default_opener = lambda p_: h5py.File(p_, 'r')
