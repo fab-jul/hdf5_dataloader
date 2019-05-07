@@ -21,6 +21,7 @@ def out_dir_with_shards(tmpdir):
     num_per_shard = 7
     inp_glob = 'inp/*.jpg'
     num_inps = len(glob.glob(inp_glob))
+    assert num_inps > 0  # Assume some folder with images at inp
     assert num_inps % num_per_shard != 0
     with pytest.raises(ValueError):
         maker.main([out_dir, inp_glob, '--shuffle', '--num_per_shard', str(num_per_shard)])
