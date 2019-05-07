@@ -1,4 +1,5 @@
 import argparse
+import sys
 import glob
 import pickle
 import time
@@ -11,13 +12,7 @@ from fjcommon import printing
 from PIL import Image
 
 
-def _big_enough(image_p, min_size):
-    img = Image.open(image_p)
-    img_min_dim = min(img.size)
-    if img_min_dim < min_size:
-        print('Skipping {} ({})...'.format(image_p, img.size))
-        return False
-    return True
+NUM_PER_SHARD_PKL = 'num_per_shard.pkl'
 
 
 def make_hdf5_files(out_dir, images_glob, shuffle=True, num_per_shard=1000, max_shards=None,
@@ -25,15 +20,7 @@ def make_hdf5_files(out_dir, images_glob, shuffle=True, num_per_shard=1000, max_
     """
     Notes:
         - total output file size may be much bigger, as JPGs get decompressed and stored as uint8
-    :param out_dir:
-    :param images_glob:
-    :param shuffle:
-    :param num_per_shard:
-    :param max_shards:
-    :param min_size:
-    :param name_fmt:
-    :param force:
-    :return:
+    Parameters mirror arguments of maker.py, see main() below.
     """
     if os.path.isdir(out_dir):
         if not force:
@@ -103,22 +90,31 @@ def make_hdf5_files(out_dir, images_glob, shuffle=True, num_per_shard=1000, max_
         last_shard_p = shard_ps[-1]
         with h5py.File(last_shard_p, 'r') as f:
             p_to_num_per_shard[os.path.basename(last_shard_p)] = len(f.keys())
-        with open(os.path.join(out_dir, 'num_per_shard.pkl'), 'wb') as f:
+        with open(os.path.join(out_dir, NUM_PER_SHARD_PKL), 'wb') as f:
             pickle.dump(p_to_num_per_shard, f)
     else:
         print('Nothing written, processed {} files...'.format(count))
 
 
+def _big_enough(image_p, min_size):
+    img = Image.open(image_p)
+    img_min_dim = min(img.size)
+    if img_min_dim < min_size:
+        print('Skipping {} ({})...'.format(image_p, img.size))
+        return False
+    return True
 
-def main():
+
+def main(args):
     p = argparse.ArgumentParser()
     p.add_argument('out_dir',
                    help='Where to store .hdf5 files. Additionally, the following files are stored: log, which saves '
                         'the parameters used to create the .hdf5 files, and num_per_shard.pkl, which stores a '
                         'dictionary mapping file names to number of entries in that file (see '
-                        'maker._get_num_in_shard).')
+                        'get_num_in_shard in dataset.py).')
     p.add_argument('images_glob',
-                   help='Glob to images to use. Make sure to escape, e.g., path/to/imgs/\*.png')
+                   help='Glob to images to use. Make sure to escape, e.g., '
+                        'path/to/imgs/\\*.png or "path/to/imgs/*.png"')
     p.add_argument('--shuffle', action='store_true',
                    help='Shuffle images before putting them into records. Default: Not set')
     p.add_argument('--num_per_shard', type=int, default=1000,
@@ -128,15 +124,16 @@ def main():
     p.add_argument('--min_size', type=int,
                    help='Only use images with either height or width >= MIN_SIZE. Default: None')
     p.add_argument('--name_fmt', default='shard_{:010d}.hdf5',
-                   help='Format string for shards, must contain one placeholder for number. Default: shard_{:010d}.hdf5')
+                   help='Format string for shards, must contain one placeholder for number. '
+                        'Default: shard_{:010d}.hdf5')
     p.add_argument('--force', action='store_true',
                    help='If given, continue creation even if `out_dir` exists already. NOTE: In this case, '
                         '`out_dir` is removed first!')
-    flags = p.parse_args()
+    flags = p.parse_args(args)
     make_hdf5_files(**flags.__dict__)
 
 
 if __name__ == '__main__':
-    main()
+    main(sys.argv[1:])
 
 
