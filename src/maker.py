@@ -8,7 +8,7 @@ import numpy as np
 import random
 import h5py
 import os
-from fjcommon import printing
+import printing
 from PIL import Image
 
 

@@ -1,18 +1,15 @@
 import glob
 import math
-import pickle
-
-import dataset
+import os
 
 import pytest
-import os
-import maker
+import torchvision.transforms as transforms
+from torch.utils.data import DataLoader
 
-import glob
+import dataset
+import maker
 from dataset import HDF5Dataset
 from transforms import ArrayToTensor, ArrayCenterCrop
-from torch.utils.data import DataLoader
-import torchvision.transforms as transforms
 
 
 @pytest.fixture()
